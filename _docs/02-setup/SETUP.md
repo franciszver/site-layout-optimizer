@@ -71,6 +71,48 @@ Frontend will be available at http://localhost:5173
 
 ## AWS Deployment
 
+### Frontend Deployment (AWS Amplify)
+
+AWS Amplify provides automatic hosting, HTTPS, and CI/CD for the React frontend.
+
+#### Prerequisites
+- GitHub repository pushed to remote
+- AWS account with Amplify access
+- Backend API deployed (or use localhost for testing)
+
+#### Setup Steps
+
+1. **Connect Repository in Amplify Console:**
+   - Go to [AWS Amplify Console](https://console.aws.amazon.com/amplify/)
+   - Click "New app" → "Host web app"
+   - Select "GitHub" and authorize
+   - Select your repository and branch (usually `main` or `master`)
+
+2. **Build Settings (Auto-detected):**
+   - Amplify will automatically detect `frontend/amplify.yml`
+   - Verify settings:
+     - Build command: `npm run build` (handled by amplify.yml)
+     - Output directory: `frontend/dist`
+
+3. **Environment Variables:**
+   - Go to App settings → Environment variables
+   - Add required variables:
+     - `VITE_API_BASE_URL`: Your API Gateway URL (e.g., `https://abc123.execute-api.us-east-1.amazonaws.com/dev/api`)
+     - `VITE_MAPBOX_TOKEN`: Your Mapbox access token
+
+4. **Deploy:**
+   - Click "Save and deploy"
+   - Amplify will build and deploy automatically
+   - Your app will be available at `https://[app-id].amplifyapp.com`
+
+#### Local Development Safety
+- ✅ Local development (`npm run dev`) continues to work independently
+- ✅ No changes needed to local `.env` file
+- ✅ Can demo locally even if Amplify is down
+- ✅ Code automatically detects environment and uses correct API URL
+
+### Backend Deployment (AWS SAM)
+
 1. **Install AWS SAM CLI:**
 ```bash
 # Follow AWS SAM installation guide

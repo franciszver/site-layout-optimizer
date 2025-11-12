@@ -92,7 +92,17 @@ When the backend is running, visit:
 
 ## 🚢 Deployment
 
-See `infrastructure/` folder for AWS deployment templates.
+### Frontend (AWS Amplify)
+The React frontend can be deployed to AWS Amplify for automatic hosting, HTTPS, and CI/CD:
+- Connect GitHub repository in Amplify Console
+- Configure environment variables (`VITE_API_BASE_URL`, `VITE_MAPBOX_TOKEN`)
+- Automatic deployments on git push
+- See `_docs/02-setup/SETUP.md` for detailed instructions
+
+**Note**: Local development continues to work independently - you can demo locally even if Amplify is down.
+
+### Backend (AWS SAM)
+See `infrastructure/` folder for AWS deployment templates (Lambda, ECS, RDS, S3).
 
 ## 📄 License
 
