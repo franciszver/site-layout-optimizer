@@ -1,0 +1,46 @@
+# Constraint Rules Configuration
+
+boundary_constraints:
+  hard_constraint: true
+  buffer_distance: 50  # feet
+  description: "Assets must be within property boundaries with buffer"
+
+exclusion_zone_constraints:
+  hard_constraint: true
+  buffer_distance: 100  # feet
+  description: "Assets must maintain buffer distance from exclusion zones"
+
+terrain_constraints:
+  max_slope: 15  # percent
+  preferred_slope: 5  # percent
+  max_elevation_change: 50  # feet
+  description: "Terrain-based placement constraints"
+
+spacing_constraints:
+  min_asset_spacing: 50  # feet
+  min_road_spacing: 25  # feet from assets
+  description: "Minimum spacing between assets and infrastructure"
+
+regulatory_constraints:
+  flood_zones:
+    enabled: true
+    buffer_distance: 200  # feet from flood zones
+    hard_constraint: false  # warning, not blocking
+  
+  wetlands:
+    enabled: true
+    buffer_distance: 300  # feet from wetlands
+    hard_constraint: true
+  
+  zoning:
+    enabled: true
+    hard_constraint: false  # depends on local regulations
+
+road_constraints:
+  max_grade: 8  # percent
+  min_width_access: 20  # feet
+  min_width_secondary: 12  # feet
+  min_turning_radius: 25  # feet
+  avoid_slopes_above: 15  # percent
+  description: "Road network generation constraints"
+

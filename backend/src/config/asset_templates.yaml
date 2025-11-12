@@ -1,0 +1,110 @@
+# Asset Templates Configuration
+# Defines available asset types with their requirements and constraints
+
+asset_types:
+  # Generic Infrastructure Assets
+  - name: "Warehouse"
+    category: "infrastructure"
+    dimensions:
+      length: 100  # feet
+      width: 50
+      height: 30
+    requirements:
+      min_area: 5000  # square feet
+      access_required: true
+      utility_connections: ["power", "water"]
+    constraints:
+      max_slope: 5  # percent
+      min_spacing: 50  # feet from other assets
+      buffer_boundary: 50  # feet from property boundary
+      buffer_exclusion: 100  # feet from exclusion zones
+  
+  - name: "Office Building"
+    category: "infrastructure"
+    dimensions:
+      length: 80
+      width: 60
+      height: 40
+    requirements:
+      min_area: 4800
+      access_required: true
+      utility_connections: ["power", "water", "sewer"]
+    constraints:
+      max_slope: 3
+      min_spacing: 75
+      buffer_boundary: 50
+      buffer_exclusion: 100
+  
+  - name: "Storage Facility"
+    category: "infrastructure"
+    dimensions:
+      length: 150
+      width: 100
+      height: 25
+    requirements:
+      min_area: 15000
+      access_required: true
+      utility_connections: ["power"]
+    constraints:
+      max_slope: 5
+      min_spacing: 100
+      buffer_boundary: 50
+      buffer_exclusion: 100
+  
+  # Energy Assets
+  - name: "Solar Array"
+    category: "energy"
+    dimensions:
+      length: 200
+      width: 200
+      height: 10
+    requirements:
+      min_area: 40000
+      access_required: true
+      utility_connections: ["power"]
+    constraints:
+      max_slope: 10
+      min_spacing: 50
+      buffer_boundary: 50
+      buffer_exclusion: 100
+      aspect_preference: "south"  # Prefer south-facing slopes
+  
+  - name: "Wind Turbine"
+    category: "energy"
+    dimensions:
+      length: 30  # base diameter
+      width: 30
+      height: 300  # tower height
+    requirements:
+      min_area: 900
+      access_required: true
+      utility_connections: ["power"]
+    constraints:
+      max_slope: 15
+      min_spacing: 500  # large spacing for wind turbines
+      buffer_boundary: 100
+      buffer_exclusion: 200
+  
+  - name: "Battery Storage"
+    category: "energy"
+    dimensions:
+      length: 50
+      width: 50
+      height: 15
+    requirements:
+      min_area: 2500
+      access_required: true
+      utility_connections: ["power"]
+    constraints:
+      max_slope: 5
+      min_spacing: 50
+      buffer_boundary: 50
+      buffer_exclusion: 100
+
+default_constraints:
+  buffer_boundary: 50  # feet
+  buffer_exclusion: 100  # feet
+  min_spacing: 50  # feet between assets
+  max_slope: 15  # percent
+  min_area_utilization: 0.2  # 20% minimum site utilization
+

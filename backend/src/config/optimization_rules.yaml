@@ -1,0 +1,56 @@
+# Optimization Rules Configuration
+
+optimization_objectives:
+  - name: "site_utilization"
+    weight: 0.3
+    description: "Maximize site utilization efficiency"
+    target_improvement: 0.2  # 20% improvement target
+  
+  - name: "cut_fill_minimization"
+    weight: 0.3
+    description: "Minimize earthwork volumes"
+    target_reduction: 0.15  # 15% reduction target
+  
+  - name: "road_length_minimization"
+    weight: 0.2
+    description: "Minimize total road length"
+    target_reduction: 0.10  # 10% reduction target
+  
+  - name: "constraint_compliance"
+    weight: 0.2
+    description: "Maximize constraint compliance"
+    target_compliance: 1.0  # 100% compliance
+
+placement_algorithm:
+  method: "multi_criteria_ranking"  # or "greedy", "genetic", "simulated_annealing"
+  grid_resolution: 10  # feet
+  candidate_density: "medium"  # low, medium, high
+  
+  ranking_criteria:
+    - terrain_suitability: 0.4
+    - distance_to_entry: 0.2
+    - constraint_compliance: 0.3
+    - spacing_optimization: 0.1
+
+road_optimization:
+  algorithm: "a_star"  # or "dijkstra", "genetic"
+  terrain_cost_weight: 0.6
+  distance_weight: 0.4
+  prefer_flatter_routes: true
+
+ai_optimization:
+  enabled: true
+  model: "gpt-4o"
+  max_iterations: 3
+  use_for:
+    - constraint_analysis
+    - placement_recommendations
+    - cost_benefit_analysis
+    - risk_assessment
+
+performance_targets:
+  processing_time_max: 120  # seconds (2 minutes)
+  accuracy_tolerance:
+    volumes: 0.10  # ±10%
+    elevations: 5  # ±5 feet
+
