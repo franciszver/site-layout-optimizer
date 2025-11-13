@@ -101,8 +101,20 @@ The React frontend can be deployed to AWS Amplify for automatic hosting, HTTPS, 
 
 **Note**: Local development continues to work independently - you can demo locally even if Amplify is down.
 
-### Backend (AWS SAM)
-See `infrastructure/` folder for AWS deployment templates (Lambda, ECS, RDS, S3).
+### Backend (AWS App Runner)
+The FastAPI backend can be deployed to AWS App Runner for automatic scaling and HTTPS:
+- Build and push Docker image to ECR
+- Deploy to App Runner using provided scripts
+- See `_docs/02-setup/BACKEND_DEPLOYMENT.md` for detailed instructions
+
+**Quick deploy:**
+```bash
+# Windows PowerShell
+.\infrastructure\deploy-backend.ps1 dev us-east-1
+
+# Linux/Mac
+./infrastructure/deploy-backend.sh dev us-east-1
+```
 
 ## 📄 License
 

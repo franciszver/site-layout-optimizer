@@ -49,17 +49,23 @@ app = FastAPI(
 )
 
 # CORS middleware
+# Get allowed origins from environment or use defaults
+allowed_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:5173",
+]
+
+# Filter out empty strings
+allowed_origins = [origin.strip() for origin in allowed_origins if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-        "http://127.0.0.1:5173",
-        "https://*.amplifyapp.com",  # Amplify default domain pattern
-    ],
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.amplifyapp\.com|https://.*\.awsapprunner\.com",  # Amplify and App Runner patterns
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

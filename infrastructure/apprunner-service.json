@@ -1,0 +1,57 @@
+{
+  "ServiceName": "site-layout-optimizer-backend-dev",
+  "SourceConfiguration": {
+    "ImageRepository": {
+      "ImageIdentifier": "REPLACE_WITH_ECR_IMAGE_URI",
+      "ImageConfiguration": {
+        "Port": "8000",
+        "RuntimeEnvironmentVariables": {
+          "ENVIRONMENT": "production",
+          "OPENROUTER_API_KEY": "REPLACE_WITH_ACTUAL_KEY",
+          "AWS_REGION": "us-east-1",
+          "DATABASE_URL": "REPLACE_WITH_DATABASE_URL",
+          "S3_BUCKET_GEOSPATIAL": "REPLACE_WITH_BUCKET_NAME",
+          "S3_BUCKET_PROCESSED": "REPLACE_WITH_BUCKET_NAME",
+          "S3_BUCKET_EXPORTS": "REPLACE_WITH_BUCKET_NAME",
+          "S3_BUCKET_TERRAIN_CACHE": "REPLACE_WITH_BUCKET_NAME"
+        },
+        "StartCommand": "python -m uvicorn src.main:app --host 0.0.0.0 --port 8000"
+      },
+      "ImageRepositoryType": "ECR"
+    },
+    "AutoDeploymentsEnabled": true,
+    "AuthenticationConfiguration": {
+      "AccessRoleArn": "REPLACE_WITH_APP_RUNNER_ROLE_ARN"
+    }
+  },
+  "InstanceConfiguration": {
+    "Cpu": "1 vCPU",
+    "Memory": "2 GB",
+    "InstanceRoleArn": "REPLACE_WITH_INSTANCE_ROLE_ARN"
+  },
+  "AutoScalingConfigurationArn": "",
+  "HealthCheckConfiguration": {
+    "Protocol": "HTTP",
+    "Path": "/health",
+    "Interval": 10,
+    "Timeout": 5,
+    "HealthyThreshold": 1,
+    "UnhealthyThreshold": 5
+  },
+  "NetworkConfiguration": {
+    "EgressConfiguration": {
+      "EgressType": "DEFAULT"
+    }
+  },
+  "Tags": [
+    {
+      "Key": "Environment",
+      "Value": "dev"
+    },
+    {
+      "Key": "Project",
+      "Value": "site-layout-optimizer"
+    }
+  ]
+}
+

@@ -89,7 +89,7 @@ AWS Amplify provides automatic hosting, HTTPS, and CI/CD for the React frontend.
    - Select your repository and branch (usually `main` or `master`)
 
 2. **Build Settings (Auto-detected):**
-   - Amplify will automatically detect `frontend/amplify.yml`
+   - Amplify will automatically detect `amplify.yml` in the root directory
    - Verify settings:
      - Build command: `npm run build` (handled by amplify.yml)
      - Output directory: `frontend/dist`

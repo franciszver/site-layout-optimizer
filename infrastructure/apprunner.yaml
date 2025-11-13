@@ -1,0 +1,31 @@
+version: 1.0
+runtime: docker
+build:
+  commands:
+    build:
+      - echo "Building Docker image..."
+      - docker build -t site-layout-optimizer-backend -f backend/Dockerfile .
+run:
+  network:
+    port: 8000
+    env: PORT
+  env:
+    - name: PORT
+      value: "8000"
+    - name: ENVIRONMENT
+      value: "production"
+    - name: OPENROUTER_API_KEY
+      value: "REPLACE_WITH_ACTUAL_KEY"
+    - name: AWS_REGION
+      value: "us-east-1"
+    - name: DATABASE_URL
+      value: "REPLACE_WITH_DATABASE_URL"
+    - name: S3_BUCKET_GEOSPATIAL
+      value: "REPLACE_WITH_BUCKET_NAME"
+    - name: S3_BUCKET_PROCESSED
+      value: "REPLACE_WITH_BUCKET_NAME"
+    - name: S3_BUCKET_EXPORTS
+      value: "REPLACE_WITH_BUCKET_NAME"
+    - name: S3_BUCKET_TERRAIN_CACHE
+      value: "REPLACE_WITH_BUCKET_NAME"
+
