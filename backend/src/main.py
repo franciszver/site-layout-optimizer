@@ -45,7 +45,7 @@ load_dotenv()
 
 app = FastAPI(
     title="Site Layout Optimizer API",
-    description="AI-powered geospatial site layout optimization for real estate due diligence",
+    description="AI-Powered geospatial site layout optimization for resources",
     version="0.1.0"
 )
 

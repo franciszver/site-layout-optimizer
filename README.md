@@ -1,6 +1,6 @@
 # Site Layout Optimizer - Pacifico Energy Group
 
-AI-powered geospatial site layout optimization system for real estate due diligence. This system processes KMZ/KML files and topographic data to generate optimized layouts with asset placement, road networks, and cut/fill estimation.
+AI-Powered geospatial site layout optimization for resources. This system processes KMZ/KML files and topographic data to generate optimized layouts with asset placement, road networks, and cut/fill estimation.
 
 ## 🚀 Quick Start
 

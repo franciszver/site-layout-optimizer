@@ -114,7 +114,7 @@ async def _export_pdf(layout_data: Dict[str, Any], request: ExportRequest) -> Fi
     c.drawString((width - title_width) / 2, height - 0.75 * inch, title)
     
     c.setFont("Helvetica", 12)
-    subtitle = "Pacifico Energy Group - AI-Powered Site Layout Optimization"
+    subtitle = "Pacifico Energy Group - AI-Powered Geospatial Site Layout Optimization for Resources"
     subtitle_width = c.stringWidth(subtitle, "Helvetica", 12)
     c.drawString((width - subtitle_width) / 2, height - 1 * inch, subtitle)
     
