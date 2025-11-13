@@ -21,7 +21,7 @@ Quick reference for deploying the frontend to AWS Amplify.
 
 ### 2. Build Settings
 
-Amplify will automatically detect `frontend/amplify.yml`. Verify:
+Amplify will automatically detect `amplify.yml` in the root directory. Verify:
 
 - **Build command**: `npm run build` (handled by amplify.yml)
 - **Output directory**: `frontend/dist`
