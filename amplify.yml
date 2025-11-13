@@ -7,17 +7,24 @@ frontend:
     build:
       commands:
         - |
-          # Check if we're already in frontend directory or need to cd into it
-          if [ -f "package.json" ]; then
-            echo "Already in frontend directory, running build..."
-            npm run build
-          elif [ -d "frontend" ]; then
-            echo "Changing to frontend directory..."
-            cd frontend && npm run build
+          # Build from frontend directory
+          cd frontend
+          echo "Building in directory: $(pwd)"
+          npm run build
+          echo "Build complete. Verifying dist exists:"
+          if [ -d "dist" ]; then
+            echo "✓ dist directory found in frontend/"
+            ls -la dist/ | head -10
           else
-            echo "Error: Cannot find frontend directory or package.json"
-            echo "Current directory: $(pwd)"
-            ls -la
+            echo "✗ dist directory NOT found"
+            exit 1
+          fi
+          # Verify from root perspective
+          cd ..
+          if [ -d "frontend/dist" ]; then
+            echo "✓ frontend/dist exists from root"
+          else
+            echo "✗ frontend/dist NOT found from root"
             exit 1
           fi
   artifacts:
