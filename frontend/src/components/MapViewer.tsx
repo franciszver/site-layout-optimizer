@@ -39,8 +39,6 @@ const MapViewer = ({
   const map = useRef<mapboxgl.Map | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [draggingAsset, setDraggingAsset] = useState<string | null>(null)
-  const [dragStartPos, setDragStartPos] = useState<[number, number] | null>(null)
-  const [isValidPosition, setIsValidPosition] = useState<boolean>(true)
   const dragStateRef = useRef<{ isDragging: boolean; draggedAssetId: string | null }>({ isDragging: false, draggedAssetId: null })
 
   useEffect(() => {
@@ -430,7 +428,6 @@ const MapViewer = ({
         dragStateRef.current.isDragging = true
         dragStateRef.current.draggedAssetId = feature.properties.id as string
         setDraggingAsset(dragStateRef.current.draggedAssetId)
-        setDragStartPos([e.lngLat.lng, e.lngLat.lat])
         
         if (onAssetDragStart) {
           onAssetDragStart(dragStateRef.current.draggedAssetId)
@@ -453,7 +450,6 @@ const MapViewer = ({
       
       // Validate position
       const isValid = validateAssetPosition(newLocation[0], newLocation[1])
-      setIsValidPosition(isValid)
       
       // Update asset position in source
       const source = map.current.getSource('assets') as mapboxgl.GeoJSONSource
@@ -519,7 +515,6 @@ const MapViewer = ({
       dragStateRef.current.isDragging = false
       dragStateRef.current.draggedAssetId = null
       setDraggingAsset(null)
-      setDragStartPos(null)
     }
 
     // Add event listeners

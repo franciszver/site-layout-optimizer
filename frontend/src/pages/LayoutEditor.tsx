@@ -7,7 +7,7 @@ import ReportExport from '../components/ReportExport'
 import LayerPanel from '../components/LayerPanel'
 import StepSection from '../components/StepSection'
 import api from '../services/api'
-import mapboxgl from 'mapbox-gl'
+import type { Map as MapboxMap } from 'mapbox-gl'
 import './LayoutEditor.css'
 
 interface LayoutData {
@@ -27,15 +27,9 @@ const LayoutEditor = () => {
   const [error, setError] = useState<string | null>(null)
   const [selectedAssets, setSelectedAssets] = useState<Array<{ type: string; count: number }>>([])
   const [entryPoint, setEntryPoint] = useState<[number, number] | null>(null)
-  const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null)
+  const [mapInstance, setMapInstance] = useState<MapboxMap | null>(null)
   const [optimizedLayout, setOptimizedLayout] = useState<any>(null)
   const [currentStep, setCurrentStep] = useState<number>(1)
-  const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
-    'property-boundary': true,
-    'exclusion-zones': true,
-    'assets': true,
-    'roads': true,
-  })
 
   useEffect(() => {
     const token = import.meta.env.VITE_MAPBOX_TOKEN || ''
@@ -488,7 +482,7 @@ const LayoutEditor = () => {
     }
   }, [layoutData])
   
-  const handleMapLoad = useCallback((map: mapboxgl.Map) => {
+  const handleMapLoad = useCallback((map: MapboxMap) => {
     setMapInstance(map)
   }, [])
 
@@ -622,10 +616,6 @@ const LayoutEditor = () => {
   }, [])
 
   const handleLayerToggle = useCallback((layerId: string, visible: boolean) => {
-    setLayerVisibility(prev => ({
-      ...prev,
-      [layerId]: visible
-    }))
     // Toggle map layer visibility
     if (mapInstance) {
       const layerMap: Record<string, string[]> = {
