@@ -6,27 +6,7 @@ frontend:
         - cd frontend && npm ci
     build:
       commands:
-        - |
-          # Build from frontend directory
-          cd frontend
-          echo "Building in directory: $(pwd)"
-          npm run build
-          echo "Build complete. Verifying dist exists:"
-          if [ -d "dist" ]; then
-            echo "✓ dist directory found in frontend/"
-            ls -la dist/ | head -10
-          else
-            echo "✗ dist directory NOT found"
-            exit 1
-          fi
-          # Verify from root perspective
-          cd ..
-          if [ -d "frontend/dist" ]; then
-            echo "✓ frontend/dist exists from root"
-          else
-            echo "✗ frontend/dist NOT found from root"
-            exit 1
-          fi
+        - cd frontend && npm run build
   artifacts:
     baseDirectory: frontend/dist
     files:
