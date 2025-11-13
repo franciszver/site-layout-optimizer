@@ -45,7 +45,7 @@ const RoadNetwork = ({ onGenerate, roadData, loading, entryPoint }: RoadNetworkP
         <div className="road-stats">
           <div className="stat-item">
             <span className="stat-label">Total Length:</span>
-            <span className="stat-value">{(roadData.totalLength / 5280).toFixed(2)} miles</span>
+            <span className="stat-value">{((roadData.totalLength * 364000.0) / 5280.0).toFixed(2)} miles</span>
           </div>
           <div className="stat-item">
             <span className="stat-label">Road Segments:</span>
