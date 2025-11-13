@@ -7,13 +7,16 @@ frontend:
     build:
       commands:
         - |
-          if [ -d "frontend" ]; then
-            cd frontend
+          # Check if we're already in frontend directory or need to cd into it
+          if [ -f "package.json" ]; then
+            echo "Already in frontend directory, running build..."
             npm run build
+          elif [ -d "frontend" ]; then
+            echo "Changing to frontend directory..."
+            cd frontend && npm run build
           else
-            echo "Error: frontend directory not found"
+            echo "Error: Cannot find frontend directory or package.json"
             echo "Current directory: $(pwd)"
-            echo "Directory contents:"
             ls -la
             exit 1
           fi
