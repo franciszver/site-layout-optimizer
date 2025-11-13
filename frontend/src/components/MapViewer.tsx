@@ -161,12 +161,14 @@ const MapViewer = ({
                   northeast: [ne.lng, ne.lat]
                 })
                 
-                map.current.fitBounds(bounds, {
-                  padding: 50,
-                  maxZoom: 16,
-                  duration: 1000,
-                })
-                console.log('Map fitted to property boundary')
+                if (map.current) {
+                  map.current.fitBounds(bounds, {
+                    padding: 50,
+                    maxZoom: 16,
+                    duration: 1000,
+                  })
+                  console.log('Map fitted to property boundary')
+                }
               } else {
                 console.warn('Bounds are empty, cannot fit map')
               }
@@ -366,34 +368,36 @@ const MapViewer = ({
       
       const roadsGeoJSON: GeoJSON.FeatureCollection = {
         type: 'FeatureCollection',
-        features: roads.map((road, idx) => {
-          console.log(`Road ${idx}:`, road, 'centerline:', road.centerline)
-          
-          // Ensure centerline is in correct format [lng, lat][]
-          let centerline = road.centerline
-          if (!Array.isArray(centerline) || centerline.length === 0) {
-            console.warn(`Road ${idx} has invalid centerline:`, centerline)
-            return null
-          }
-          
-          // Check if centerline is array of arrays (coordinates)
-          if (!Array.isArray(centerline[0])) {
-            console.warn(`Road ${idx} centerline is not array of arrays:`, centerline)
-            return null
-          }
-          
-          return {
-            type: 'Feature',
-            geometry: {
-              type: 'LineString',
-              coordinates: centerline,
-            },
-            properties: {
-              id: `road-${idx}`,
-              type: road.type || 'road',
-            },
-          }
-        }).filter((f): f is GeoJSON.Feature => f !== null),
+        features: roads
+          .map((road, idx) => {
+            console.log(`Road ${idx}:`, road, 'centerline:', road.centerline)
+            
+            // Ensure centerline is in correct format [lng, lat][]
+            let centerline = road.centerline
+            if (!Array.isArray(centerline) || centerline.length === 0) {
+              console.warn(`Road ${idx} has invalid centerline:`, centerline)
+              return null
+            }
+            
+            // Check if centerline is array of arrays (coordinates)
+            if (!Array.isArray(centerline[0])) {
+              console.warn(`Road ${idx} centerline is not array of arrays:`, centerline)
+              return null
+            }
+            
+            return {
+              type: 'Feature' as const,
+              geometry: {
+                type: 'LineString' as const,
+                coordinates: centerline as [number, number][],
+              },
+              properties: {
+                id: `road-${idx}`,
+                type: road.type || 'road',
+              },
+            } as GeoJSON.Feature<GeoJSON.LineString>
+          })
+          .filter((f): f is GeoJSON.Feature<GeoJSON.LineString> => f !== null),
       }
 
       console.log('Roads GeoJSON created:', roadsGeoJSON, 'Features:', roadsGeoJSON.features.length)
@@ -418,7 +422,7 @@ const MapViewer = ({
                   })
                 }
               })
-              if (hasCoords && !bounds.isEmpty()) {
+              if (hasCoords && !bounds.isEmpty() && map.current) {
                 map.current.fitBounds(bounds, {
                   padding: 100,
                   maxZoom: 18,
@@ -479,9 +483,12 @@ const MapViewer = ({
           }
           
           // Log first few coordinates to verify format
-          if (roadsGeoJSON.features.length > 0 && roadsGeoJSON.features[0].geometry.coordinates) {
-            const firstCoords = roadsGeoJSON.features[0].geometry.coordinates.slice(0, 3)
-            console.log('First 3 road coordinates:', firstCoords)
+          if (roadsGeoJSON.features.length > 0) {
+            const firstFeature = roadsGeoJSON.features[0]
+            if (firstFeature.geometry.type === 'LineString' && 'coordinates' in firstFeature.geometry) {
+              const firstCoords = firstFeature.geometry.coordinates.slice(0, 3)
+              console.log('First 3 road coordinates:', firstCoords)
+            }
           }
           
           // Fit map to show all roads after a short delay to ensure layer is rendered
@@ -507,11 +514,13 @@ const MapViewer = ({
                   southwest: [sw.lng, sw.lat], 
                   northeast: [ne.lng, ne.lat] 
                 })
-                map.current.fitBounds(bounds, {
-                  padding: 100,
-                  maxZoom: 18,
-                  duration: 1000,
-                })
+                if (map.current) {
+                  map.current.fitBounds(bounds, {
+                    padding: 100,
+                    maxZoom: 18,
+                    duration: 1000,
+                  })
+                }
                 console.log('Map fitted to roads bounds')
               } else {
                 console.warn('Could not create bounds from roads - no valid coordinates')

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+// useState removed - not used
 import './RoadNetwork.css'
 
 interface RoadNetworkProps {

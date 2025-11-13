@@ -5,7 +5,7 @@ import AssetPlacement from '../components/AssetPlacement'
 import RoadNetwork from '../components/RoadNetwork'
 import ReportExport from '../components/ReportExport'
 import api from '../services/api'
-import mapboxgl from 'mapbox-gl'
+// mapboxgl import removed - not used directly
 import './LayoutEditor.css'
 
 interface LayoutData {
@@ -477,7 +477,7 @@ const LayoutEditor = () => {
     }
   }, [layoutData?.properties])
 
-  const exclusionZonesGeoJSON = useMemo(() => {
+  const exclusionZonesGeoJSON = useMemo((): GeoJSON.FeatureCollection | undefined => {
     if (!layoutData?.exclusion_zones || layoutData.exclusion_zones.length === 0) {
       console.log('No exclusion zones available for map')
       return undefined
@@ -485,9 +485,8 @@ const LayoutEditor = () => {
     
     console.log('Creating exclusion zones GeoJSON from:', layoutData.exclusion_zones)
     
-    return {
-      type: 'FeatureCollection' as const,
-      features: layoutData.exclusion_zones.map((zone: any) => {
+    const features = layoutData.exclusion_zones
+      .map((zone: any): GeoJSON.Feature | null => {
         const geometry = zone.geometry || zone
         if (!geometry || !geometry.type || !geometry.coordinates) {
           console.warn('Invalid exclusion zone geometry:', zone)
@@ -495,10 +494,15 @@ const LayoutEditor = () => {
         }
         return {
           type: 'Feature' as const,
-          geometry: geometry,
+          geometry: geometry as GeoJSON.Geometry,
           properties: zone.attributes || {},
         }
-      }).filter((f: any) => f !== null),
+      })
+      .filter((f): f is GeoJSON.Feature => f !== null)
+    
+    return {
+      type: 'FeatureCollection' as const,
+      features: features,
     }
   }, [layoutData?.exclusion_zones])
 
