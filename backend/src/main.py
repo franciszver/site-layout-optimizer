@@ -39,6 +39,7 @@ from handlers.generate_roads import router as roads_router
 from handlers.calculate_cutfill import router as cutfill_router
 from handlers.export import router as export_router
 from handlers.constraints import router as constraints_router
+from handlers.gis_integration import router as gis_router
 
 load_dotenv()
 
@@ -50,25 +51,32 @@ app = FastAPI(
 
 # CORS middleware
 # Get allowed origins from environment or use defaults
-allowed_origins = os.getenv("CORS_ORIGINS", "").split(",") if os.getenv("CORS_ORIGINS") else [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:5173",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:3001",
-    "http://127.0.0.1:5173",
-]
-
-# Filter out empty strings
-allowed_origins = [origin.strip() for origin in allowed_origins if origin.strip()]
+# For local development, allow all localhost origins
+cors_origins_env = os.getenv("CORS_ORIGINS", "")
+if cors_origins_env:
+    # Use environment variable if set
+    allowed_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+else:
+    # Default: allow all localhost origins for local development
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"https://.*\.amplifyapp\.com|https://.*\.awsapprunner\.com",  # Amplify and App Runner patterns
+    allow_origin_regex=r"https://.*\.amplifyapp\.com|https://.*\.awsapprunner\.com|http://localhost:\d+|http://127\.0\.0\.1:\d+",  # Amplify, App Runner, and any localhost port
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Rate limiting middleware
@@ -94,6 +102,7 @@ app.include_router(roads_router, prefix="/api", tags=["roads"])
 app.include_router(cutfill_router, prefix="/api", tags=["cutfill"])
 app.include_router(export_router, prefix="/api", tags=["export"])
 app.include_router(constraints_router, prefix="/api", tags=["constraints"])
+app.include_router(gis_router, prefix="/api", tags=["GIS Integration"])
 
 @app.get("/")
 async def root():

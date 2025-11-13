@@ -12,9 +12,11 @@ sys.path.append(str(Path(__file__).parent.parent))
 from services.asset_placer import AssetPlacer
 from services.ai_optimizer import AIOptimizer
 from services.regulatory_fetcher import RegulatoryFetcher
+from handlers.gis_integration import register_layout
 from shapely.geometry import Polygon, Point
 import json
 import threading
+from datetime import datetime
 
 router = APIRouter()
 
@@ -148,8 +150,9 @@ async def optimize_layout(request: OptimizeRequest):
             terrain_analysis=request.terrain_data
         )
         
-        result = JSONResponse(content={
-            'layout_id': 'generated-layout-id',
+        layout_id = 'generated-layout-id'
+        result_data = {
+            'layout_id': layout_id,
             'assets': [
                 {
                     'id': f"asset-{i}",
@@ -170,7 +173,36 @@ async def optimize_layout(request: OptimizeRequest):
                 'constraint_compliance': 1.0
             },
             'message': 'Layout optimization completed successfully'
-        })
+        }
+        
+        result = JSONResponse(content=result_data)
+        
+        # Register layout in GIS integration store
+        try:
+            register_layout(layout_id, {
+                'file_id': request_hash,  # Use request hash as file_id
+                'properties': [{
+                    'geometry': {
+                        'type': 'Polygon',
+                        'coordinates': [request.property_boundary]
+                    }
+                }],
+                'exclusion_zones': [
+                    {
+                        'geometry': {
+                            'type': 'Polygon',
+                            'coordinates': [zone_coords]
+                        }
+                    }
+                    for zone_coords in (request.exclusion_zones or [])
+                ],
+                'assets': result_data['assets'],
+                'roads': [],  # Roads added separately
+                'terrain_data': request.terrain_data,
+                'optimization_metrics': result_data['optimization_metrics'],
+            })
+        except Exception as e:
+            print(f"Warning: Failed to register layout in GIS store: {e}")
         
         # Cache result and clean up
         with _request_lock:

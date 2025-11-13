@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
@@ -12,6 +12,11 @@ interface MapViewerProps {
   exclusionZones?: GeoJSON.FeatureCollection
   onMapClick?: (lng: number, lat: number) => void
   onMapLoad?: (map: mapboxgl.Map) => void
+  onAssetDrag?: (assetId: string, newLocation: [number, number]) => void
+  onAssetDragStart?: (assetId: string) => void
+  onAssetDragEnd?: (assetId: string, newLocation: [number, number]) => void
+  propertyBoundaryPolygon?: number[][] // For constraint validation
+  exclusionZonePolygons?: number[][][] // For constraint validation
 }
 
 const MapViewer = ({ 
@@ -23,11 +28,20 @@ const MapViewer = ({
   roads,
   exclusionZones,
   onMapClick,
-  onMapLoad
+  onMapLoad,
+  onAssetDrag,
+  onAssetDragStart,
+  onAssetDragEnd,
+  propertyBoundaryPolygon,
+  exclusionZonePolygons
 }: MapViewerProps) => {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
+  const [draggingAsset, setDraggingAsset] = useState<string | null>(null)
+  const [dragStartPos, setDragStartPos] = useState<[number, number] | null>(null)
+  const [isValidPosition, setIsValidPosition] = useState<boolean>(true)
+  const dragStateRef = useRef<{ isDragging: boolean; draggedAssetId: string | null }>({ isDragging: false, draggedAssetId: null })
 
   useEffect(() => {
     if (!mapContainer.current || map.current || !accessToken) return
@@ -312,6 +326,19 @@ const MapViewer = ({
           },
         })
 
+        // Make assets layer interactive (cursor pointer)
+        map.current.on('mouseenter', layerId, () => {
+          if (map.current) {
+            map.current.getCanvas().style.cursor = 'move'
+          }
+        })
+
+        map.current.on('mouseleave', layerId, () => {
+          if (map.current && !draggingAsset) {
+            map.current.getCanvas().style.cursor = ''
+          }
+        })
+
         // Add labels
         map.current.addLayer({
           id: `${layerId}-labels`,
@@ -349,7 +376,167 @@ const MapViewer = ({
         }
       }
     }
-  }, [mapLoaded, assets ? JSON.stringify(assets) : null])
+  }, [mapLoaded, assets ? JSON.stringify(assets) : null, draggingAsset])
+
+  // Helper function to check if point is within polygon (point-in-polygon)
+  const isPointInPolygon = useCallback((point: [number, number], polygon: number[][]): boolean => {
+    if (!polygon || polygon.length < 3) return false
+    
+    let inside = false
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i][0], yi = polygon[i][1]
+      const xj = polygon[j][0], yj = polygon[j][1]
+      const intersect = ((yi > point[1]) !== (yj > point[1])) &&
+        (point[0] < (xj - xi) * (point[1] - yi) / (yj - yi) + xi)
+      if (intersect) inside = !inside
+    }
+    return inside
+  }, [])
+
+  // Validate asset position against constraints
+  const validateAssetPosition = useCallback((lng: number, lat: number): boolean => {
+    const point: [number, number] = [lng, lat]
+    
+    // Check if within property boundary
+    if (propertyBoundaryPolygon && propertyBoundaryPolygon.length > 0) {
+      if (!isPointInPolygon(point, propertyBoundaryPolygon)) {
+        return false
+      }
+    }
+    
+    // Check if outside exclusion zones
+    if (exclusionZonePolygons && exclusionZonePolygons.length > 0) {
+      for (const zone of exclusionZonePolygons) {
+        if (isPointInPolygon(point, zone)) {
+          return false
+        }
+      }
+    }
+    
+    return true
+  }, [propertyBoundaryPolygon, exclusionZonePolygons, isPointInPolygon])
+
+  // Set up drag handlers for assets
+  useEffect(() => {
+    if (!map.current || !mapLoaded || !onAssetDrag) return
+
+    const layerId = 'assets-layer'
+
+    const handleMouseDown = (e: mapboxgl.MapMouseEvent) => {
+      if (!map.current || !e.features || e.features.length === 0) return
+      
+      const feature = e.features[0]
+      if (feature.layer?.id === layerId && feature.properties?.id) {
+        dragStateRef.current.isDragging = true
+        dragStateRef.current.draggedAssetId = feature.properties.id as string
+        setDraggingAsset(dragStateRef.current.draggedAssetId)
+        setDragStartPos([e.lngLat.lng, e.lngLat.lat])
+        
+        if (onAssetDragStart) {
+          onAssetDragStart(dragStateRef.current.draggedAssetId)
+        }
+        
+        // Change cursor
+        if (map.current) {
+          map.current.getCanvas().style.cursor = 'grabbing'
+        }
+        
+        // Prevent default map behavior
+        e.preventDefault()
+      }
+    }
+
+    const handleMouseMove = (e: mapboxgl.MapMouseEvent) => {
+      if (!dragStateRef.current.isDragging || !dragStateRef.current.draggedAssetId || !map.current) return
+      
+      const newLocation: [number, number] = [e.lngLat.lng, e.lngLat.lat]
+      
+      // Validate position
+      const isValid = validateAssetPosition(newLocation[0], newLocation[1])
+      setIsValidPosition(isValid)
+      
+      // Update asset position in source
+      const source = map.current.getSource('assets') as mapboxgl.GeoJSONSource
+      if (source && source._data) {
+        const data = source._data as GeoJSON.FeatureCollection
+        const updatedFeatures = data.features.map(feature => {
+          if (feature.properties?.id === dragStateRef.current.draggedAssetId) {
+            return {
+              ...feature,
+              geometry: {
+                type: 'Point' as const,
+                coordinates: newLocation,
+              },
+            }
+          }
+          return feature
+        })
+        source.setData({
+          type: 'FeatureCollection',
+          features: updatedFeatures,
+        })
+        
+        // Update circle color based on validity
+        map.current.setPaintProperty(layerId, 'circle-color', isValid ? '#28a745' : '#dc3545')
+      }
+      
+      if (onAssetDrag) {
+        onAssetDrag(dragStateRef.current.draggedAssetId, newLocation)
+      }
+    }
+
+    const handleMouseUp = () => {
+      if (!dragStateRef.current.isDragging || !dragStateRef.current.draggedAssetId || !map.current) return
+      
+      const source = map.current.getSource('assets') as mapboxgl.GeoJSONSource
+      let finalLocation: [number, number] | null = null
+      
+      if (source && source._data) {
+        const data = source._data as GeoJSON.FeatureCollection
+        const draggedFeature = data.features.find(f => f.properties?.id === dragStateRef.current.draggedAssetId)
+        if (draggedFeature && draggedFeature.geometry.type === 'Point') {
+          finalLocation = draggedFeature.geometry.coordinates as [number, number]
+        }
+      }
+      
+      if (finalLocation && onAssetDragEnd) {
+        onAssetDragEnd(dragStateRef.current.draggedAssetId, finalLocation)
+      }
+      
+      // Reset cursor
+      if (map.current) {
+        map.current.getCanvas().style.cursor = ''
+      }
+      
+      // Reset circle color after a short delay
+      setTimeout(() => {
+        if (map.current) {
+          map.current.setPaintProperty(layerId, 'circle-color', '#ff6600')
+        }
+      }, 300)
+      
+      // Reset drag state
+      dragStateRef.current.isDragging = false
+      dragStateRef.current.draggedAssetId = null
+      setDraggingAsset(null)
+      setDragStartPos(null)
+    }
+
+    // Add event listeners
+    map.current.on('mousedown', layerId, handleMouseDown)
+    map.current.on('mousemove', handleMouseMove)
+    map.current.on('mouseup', handleMouseUp)
+    map.current.on('mouseleave', handleMouseUp)
+
+    return () => {
+      if (map.current) {
+        map.current.off('mousedown', layerId, handleMouseDown)
+        map.current.off('mousemove', handleMouseMove)
+        map.current.off('mouseup', handleMouseUp)
+        map.current.off('mouseleave', handleMouseUp)
+      }
+    }
+  }, [mapLoaded, onAssetDrag, onAssetDragStart, onAssetDragEnd, propertyBoundaryPolygon, exclusionZonePolygons, validateAssetPosition])
 
   // Add roads layer
   useEffect(() => {

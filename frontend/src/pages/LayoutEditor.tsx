@@ -4,8 +4,10 @@ import FileUpload from '../components/FileUpload'
 import AssetPlacement from '../components/AssetPlacement'
 import RoadNetwork from '../components/RoadNetwork'
 import ReportExport from '../components/ReportExport'
+import LayerPanel from '../components/LayerPanel'
+import StepSection from '../components/StepSection'
 import api from '../services/api'
-// mapboxgl import removed - not used directly
+import mapboxgl from 'mapbox-gl'
 import './LayoutEditor.css'
 
 interface LayoutData {
@@ -27,6 +29,13 @@ const LayoutEditor = () => {
   const [entryPoint, setEntryPoint] = useState<[number, number] | null>(null)
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null)
   const [optimizedLayout, setOptimizedLayout] = useState<any>(null)
+  const [currentStep, setCurrentStep] = useState<number>(1)
+  const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({
+    'property-boundary': true,
+    'exclusion-zones': true,
+    'assets': true,
+    'roads': true,
+  })
 
   useEffect(() => {
     const token = import.meta.env.VITE_MAPBOX_TOKEN || ''
@@ -34,18 +43,41 @@ const LayoutEditor = () => {
   }, [])
 
   const handleFileUpload = async (file: File) => {
+    console.log('handleFileUpload called with file:', file)
+    console.log('File details:', {
+      name: file?.name,
+      size: file?.size,
+      type: file?.type,
+      lastModified: file?.lastModified
+    })
+    
     setLoading(true)
     setError(null)
     
     try {
+      // Validate file exists
+      if (!file) {
+        console.error('No file provided')
+        throw new Error('No file provided')
+      }
+      
+      // Warn if file is empty, but allow it for demo purposes (backend uses mock data)
+      if (file.size === 0) {
+        console.warn('File is empty (0 bytes), but proceeding with demo mode. Backend will use mock data based on filename.')
+      }
+      
+      console.log('Uploading file:', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      })
+      
       const formData = new FormData()
       formData.append('file', file)
       
-      const response = await api.post('/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      })
+      // Don't set Content-Type manually - let Axios/browser set it with boundary
+      // Axios automatically handles FormData and sets the correct Content-Type
+      const response = await api.post('/upload', formData)
       
       console.log('Upload response:', response.data)
       
@@ -88,6 +120,7 @@ const LayoutEditor = () => {
       }
       
       setLayoutData(newLayoutData)
+      setCurrentStep(2) // Move to terrain analysis step
 
       // Center map on property if available
       if (properties.length > 0 && properties[0].geometry) {
@@ -120,7 +153,14 @@ const LayoutEditor = () => {
         await handleAnalyze(response.data.file_id)
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Error uploading file')
+      console.error('Upload error:', err)
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        stack: err.stack
+      })
+      setError(err.response?.data?.detail || err.message || 'Error uploading file')
     } finally {
       setLoading(false)
     }
@@ -144,6 +184,7 @@ const LayoutEditor = () => {
         ...prev,
         terrain_data: response.data,
       }))
+      setCurrentStep(3) // Move to asset placement step
     } catch (err: any) {
       console.error('Analysis error:', err)
       const errorMsg = err.response?.data?.detail || err.message || 'Error analyzing terrain'
@@ -272,6 +313,7 @@ const LayoutEditor = () => {
         ...prev,
         assets: assets,
       }))
+      setCurrentStep(4) // Move to road network step
 
       // Auto-generate roads
       if (assets.length > 0) {
@@ -407,6 +449,7 @@ const LayoutEditor = () => {
         ...prev,
         roads: roadsData,
       }))
+      setCurrentStep(5) // Move to export step
     } catch (err: any) {
       console.error('Road generation error:', err)
       let errorMessage = 'Error generating roads'
@@ -517,104 +560,299 @@ const LayoutEditor = () => {
     return roads
   }, [layoutData?.roads ? JSON.stringify(layoutData.roads) : null])
 
+  // Extract property boundary polygon for constraint validation
+  const propertyBoundaryPolygon = useMemo(() => {
+    if (!layoutData?.properties?.[0]) return undefined
+    const property = layoutData.properties[0]
+    const geometry = property.geometry || property
+    if (geometry.type === 'Polygon' && geometry.coordinates && geometry.coordinates[0]) {
+      return geometry.coordinates[0] // First ring of polygon
+    }
+    return undefined
+  }, [layoutData?.properties])
+
+  // Extract exclusion zone polygons for constraint validation
+  const exclusionZonePolygons = useMemo(() => {
+    if (!layoutData?.exclusion_zones || layoutData.exclusion_zones.length === 0) return undefined
+    return layoutData.exclusion_zones
+      .map((zone: any) => {
+        const zoneGeom = zone.geometry || zone
+        if (zoneGeom.type === 'Polygon' && zoneGeom.coordinates && zoneGeom.coordinates[0]) {
+          return zoneGeom.coordinates[0] // First ring of polygon
+        }
+        return null
+      })
+      .filter((z: any) => z !== null) as number[][][]
+  }, [layoutData?.exclusion_zones])
+
+  // Handle asset drag events
+  const handleAssetDragStart = useCallback((assetId: string) => {
+    console.log('Asset drag started:', assetId)
+  }, [])
+
+  const handleAssetDrag = useCallback((assetId: string, newLocation: [number, number]) => {
+    // Update asset position in real-time during drag
+    setLayoutData(prev => {
+      if (!prev || !prev.assets) return prev
+      return {
+        ...prev,
+        assets: prev.assets.map(asset =>
+          asset.id === assetId
+            ? { ...asset, location: newLocation }
+            : asset
+        ),
+      }
+    })
+  }, [])
+
+  const handleAssetDragEnd = useCallback((assetId: string, newLocation: [number, number]) => {
+    console.log('Asset drag ended:', assetId, 'at', newLocation)
+    // Final update of asset position
+    setLayoutData(prev => {
+      if (!prev || !prev.assets) return prev
+      return {
+        ...prev,
+        assets: prev.assets.map(asset =>
+          asset.id === assetId
+            ? { ...asset, location: newLocation }
+            : asset
+        ),
+      }
+    })
+  }, [])
+
+  const handleLayerToggle = useCallback((layerId: string, visible: boolean) => {
+    setLayerVisibility(prev => ({
+      ...prev,
+      [layerId]: visible
+    }))
+    // Toggle map layer visibility
+    if (mapInstance) {
+      const layerMap: Record<string, string[]> = {
+        'property-boundary': ['property-boundary-layer'],
+        'exclusion-zones': ['exclusion-zones-layer'],
+        'assets': ['assets-layer', 'assets-layer-labels'],
+        'roads': ['roads-layer'],
+      }
+      const layers = layerMap[layerId] || []
+      layers.forEach(layer => {
+        const visibility = visible ? 'visible' : 'none'
+        if (mapInstance.getLayer(layer)) {
+          mapInstance.setLayoutProperty(layer, 'visibility', visibility)
+        }
+      })
+    }
+  }, [mapInstance])
+
+  const handleNextStep = () => {
+    if (currentStep < 5) {
+      setCurrentStep(currentStep + 1)
+    }
+  }
+
+  const handlePreviousStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1)
+    }
+  }
+
+  // Calculate step completion
+  const step1Completed = !!layoutData?.file_id
+  const step2Completed = !!layoutData?.terrain_data
+  const step3Completed = !!layoutData?.assets && layoutData.assets.length > 0
+  const step4Completed = !!layoutData?.roads && layoutData.roads.length > 0
+  const step5Completed = false // Export is always available
+
+  // Calculate progress percentage
+  const progress = ((currentStep - 1) / 4) * 100
+
   return (
     <div className="layout-editor">
-      <header className="editor-header">
-        <h1>Site Layout Editor</h1>
-        <p>Pacifico Energy Group - AI-Powered Site Layout Optimization</p>
+      {/* Top Bar - Google Earth Style */}
+      <header className="editor-top-bar">
+        <div className="top-bar-left">
+          <h1>Site Layout Optimizer</h1>
+          <span className="project-subtitle">Pacifico Energy Group</span>
+        </div>
+        <div className="top-bar-right">
+          {layoutData?.file_id && (
+            <span className="project-id">Layout: {layoutData.file_id}</span>
+          )}
+        </div>
       </header>
+
+      {/* Progress Bar */}
+      <div className="progress-bar-container">
+        <div className="progress-bar-track">
+          <div 
+            className="progress-bar-fill" 
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="progress-steps">
+          <span className={currentStep >= 1 ? 'active' : ''}>1. Upload</span>
+          <span className={currentStep >= 2 ? 'active' : ''}>2. Analyze</span>
+          <span className={currentStep >= 3 ? 'active' : ''}>3. Optimize</span>
+          <span className={currentStep >= 4 ? 'active' : ''}>4. Roads</span>
+          <span className={currentStep >= 5 ? 'active' : ''}>5. Export</span>
+        </div>
+      </div>
       
       <div className="editor-content">
+        {/* Left Sidebar - Google Earth Style */}
         <aside className="editor-sidebar">
-          <section className="sidebar-section">
-            <h2>Upload Property Data</h2>
-            <FileUpload onUpload={handleFileUpload} />
-            {uploadedFile && (
-              <p className="upload-success">✓ {uploadedFile.name} uploaded</p>
-            )}
-            {layoutData?.file_id && (
-              <p className="file-id">File ID: {layoutData.file_id}</p>
-            )}
-            {layoutData?.file_id && !layoutData?.terrain_data && (
-              <button
-                className="analyze-button"
-                onClick={() => handleAnalyze(layoutData.file_id!)}
-                disabled={loading}
-                style={{
-                  marginTop: '10px',
-                  padding: '8px 16px',
-                  backgroundColor: '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {loading ? 'Analyzing...' : 'Analyze Terrain'}
-              </button>
-            )}
-            {layoutData?.terrain_data && (
-              <p className="upload-success" style={{ marginTop: '10px' }}>
-                ✓ Terrain analyzed
-              </p>
-            )}
-          </section>
-          
-          <section className="sidebar-section">
-            <h2>Asset Placement</h2>
-            <AssetPlacement 
-              onPlaceAsset={handleAssetPlace}
-              selectedAssets={selectedAssets}
-            />
-          </section>
-          
-          <section className="sidebar-section">
-            <h2>Road Network</h2>
-            <RoadNetwork 
-              onGenerate={() => {
-                console.log('Generate Road Network button clicked')
-                handleGenerateRoads()
-              }}
-              roadData={layoutData?.roads ? {
-                totalLength: layoutData.roads.reduce((sum: number, road: any) => sum + (road.length || 0), 0),
-                roadCount: layoutData.roads.length,
-              } : undefined}
-              loading={loading}
-              entryPoint={entryPoint}
-            />
-          </section>
-          
-          <section className="sidebar-section">
-            <h2>Export</h2>
-            <ReportExport 
-              layoutId={optimizedLayout?.layout_id || layoutData?.file_id}
-              layoutData={layoutData}
-            />
-          </section>
-          
-          <button 
-            className="optimize-button"
-            onClick={handleOptimize}
-            disabled={!layoutData || loading || selectedAssets.length === 0}
-          >
-            {loading ? 'Processing...' : 'Optimize Layout'}
-          </button>
+          {/* Layer Panel - Google Earth Style */}
+          <LayerPanel
+            propertyBoundary={propertyGeoJSON}
+            exclusionZones={exclusionZonesGeoJSON}
+            assets={memoizedAssets}
+            roads={memoizedRoads}
+            onLayerToggle={handleLayerToggle}
+          />
 
-          {optimizedLayout && (
-            <div className="optimization-results">
-              <h3>Optimization Results</h3>
-              <div className="result-metric">
-                <span>Assets Placed:</span>
-                <span>{optimizedLayout.optimization_metrics?.assets_placed || 0}</span>
-              </div>
-              <div className="result-metric">
-                <span>Site Utilization:</span>
-                <span>{(optimizedLayout.optimization_metrics?.site_utilization || 0 * 100).toFixed(1)}%</span>
-              </div>
-            </div>
-          )}
+          {/* Step-by-Step Workflow */}
+          <div className="workflow-steps">
+            {/* Step 1: Upload Property File */}
+            <StepSection
+              stepNumber={1}
+              title="Upload Property File"
+              isCompleted={step1Completed}
+              isActive={currentStep === 1}
+              canProceed={step1Completed}
+              onNext={handleNextStep}
+            >
+              <FileUpload onUpload={handleFileUpload} />
+              {uploadedFile && (
+                <p className="upload-success">✓ {uploadedFile.name} uploaded</p>
+              )}
+              {layoutData?.file_id && (
+                <p className="file-id">File ID: {layoutData.file_id}</p>
+              )}
+            </StepSection>
+
+            {/* Step 2: Terrain Analysis */}
+            <StepSection
+              stepNumber={2}
+              title="Terrain Analysis"
+              isCompleted={step2Completed}
+              isActive={currentStep === 2}
+              canProceed={step2Completed}
+              onNext={handleNextStep}
+              onPrevious={handlePreviousStep}
+            >
+              {layoutData?.file_id && !layoutData?.terrain_data && (
+                <button
+                  className="analyze-button"
+                  onClick={() => handleAnalyze(layoutData.file_id!)}
+                  disabled={loading}
+                >
+                  {loading ? 'Analyzing...' : 'Analyze Terrain'}
+                </button>
+              )}
+              {layoutData?.terrain_data && (
+                <div className="analysis-results">
+                  <p className="upload-success">✓ Terrain analyzed</p>
+                  {layoutData.terrain_data.elevation_stats && (
+                    <div className="terrain-stats">
+                      <p>Min Elevation: {(
+                        layoutData.terrain_data.elevation_stats.min_elevation || 
+                        layoutData.terrain_data.elevation_stats.min || 
+                        0
+                      ).toFixed(1)}m</p>
+                      <p>Max Elevation: {(
+                        layoutData.terrain_data.elevation_stats.max_elevation || 
+                        layoutData.terrain_data.elevation_stats.max || 
+                        0
+                      ).toFixed(1)}m</p>
+                      <p>Avg Slope: {(
+                        layoutData.terrain_data.elevation_stats.avg_slope || 
+                        layoutData.terrain_data.slope_range?.mean || 
+                        0
+                      ).toFixed(1)}°</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </StepSection>
+
+            {/* Step 3: Asset Placement */}
+            <StepSection
+              stepNumber={3}
+              title="Asset Placement"
+              isCompleted={step3Completed}
+              isActive={currentStep === 3}
+              canProceed={step3Completed}
+              onNext={handleNextStep}
+              onPrevious={handlePreviousStep}
+            >
+              <AssetPlacement 
+                onPlaceAsset={handleAssetPlace}
+                selectedAssets={selectedAssets}
+              />
+              <button 
+                className="optimize-button"
+                onClick={handleOptimize}
+                disabled={!layoutData || loading || selectedAssets.length === 0}
+              >
+                {loading ? 'Processing...' : 'Optimize Layout'}
+              </button>
+              {optimizedLayout && (
+                <div className="optimization-results">
+                  <h4>Optimization Results</h4>
+                  <div className="result-metric">
+                    <span>Assets Placed:</span>
+                    <span>{optimizedLayout.optimization_metrics?.assets_placed || 0}</span>
+                  </div>
+                  <div className="result-metric">
+                    <span>Site Utilization:</span>
+                    <span>{((optimizedLayout.optimization_metrics?.site_utilization || 0) * 100).toFixed(1)}%</span>
+                  </div>
+                </div>
+              )}
+            </StepSection>
+
+            {/* Step 4: Road Network */}
+            <StepSection
+              stepNumber={4}
+              title="Road Network"
+              isCompleted={step4Completed}
+              isActive={currentStep === 4}
+              canProceed={step4Completed}
+              onNext={handleNextStep}
+              onPrevious={handlePreviousStep}
+            >
+              <RoadNetwork 
+                onGenerate={() => {
+                  console.log('Generate Road Network button clicked')
+                  handleGenerateRoads()
+                }}
+                roadData={layoutData?.roads ? {
+                  totalLength: layoutData.roads.reduce((sum: number, road: any) => sum + (road.length || 0), 0),
+                  roadCount: layoutData.roads.length,
+                } : undefined}
+                loading={loading}
+                entryPoint={entryPoint}
+              />
+            </StepSection>
+
+            {/* Step 5: Export */}
+            <StepSection
+              stepNumber={5}
+              title="Export Reports"
+              isCompleted={step5Completed}
+              isActive={currentStep === 5}
+              canProceed={true}
+              onPrevious={handlePreviousStep}
+            >
+              <ReportExport 
+                layoutId={optimizedLayout?.layout_id || layoutData?.file_id}
+                layoutData={layoutData}
+              />
+            </StepSection>
+          </div>
         </aside>
         
+        {/* Main Map Area - Google Earth Style */}
         <main className="editor-main">
           {error && (
             <div className="error-message">
@@ -642,6 +880,11 @@ const LayoutEditor = () => {
                 exclusionZones={exclusionZonesGeoJSON}
                 onMapClick={handleMapClick}
                 onMapLoad={handleMapLoad}
+                onAssetDrag={handleAssetDrag}
+                onAssetDragStart={handleAssetDragStart}
+                onAssetDragEnd={handleAssetDragEnd}
+                propertyBoundaryPolygon={propertyBoundaryPolygon}
+                exclusionZonePolygons={exclusionZonePolygons}
               />
               {propertyGeoJSON && (
                 <div className="map-info">
@@ -651,6 +894,9 @@ const LayoutEditor = () => {
                   )}
                   {memoizedAssets && memoizedAssets.length > 0 && (
                     <p>✓ {memoizedAssets.length} asset(s) placed</p>
+                  )}
+                  {memoizedRoads && memoizedRoads.length > 0 && (
+                    <p>✓ {memoizedRoads.length} road(s) generated</p>
                   )}
                 </div>
               )}

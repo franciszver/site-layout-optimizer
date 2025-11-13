@@ -31,6 +31,8 @@ dist/
 build/
 .vite/
 *.local
+# Ignore package-lock.json in backend (Python project, not Node.js)
+backend/package-lock.json
 
 # Environment variables
 .env
@@ -88,3 +90,4 @@ output/
 
 # Documentation (organized in _docs/)
 # Keep root README.md for GitHub
+_docs/02-setup/GDAL_INSTALL_WINDOWS.md

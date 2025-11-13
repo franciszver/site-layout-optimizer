@@ -13,16 +13,26 @@ const FileUpload = ({ onUpload, acceptedTypes = ['.kmz', '.kml', '.geojson'] }: 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setDragging(false)
+    console.log('FileUpload: handleDrop called')
     const file = e.dataTransfer.files[0]
+    console.log('FileUpload: dropped file:', file?.name, file?.size)
     if (file) {
+      console.log('FileUpload: calling onUpload with file')
       onUpload(file)
+    } else {
+      console.warn('FileUpload: No file in drop event')
     }
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('FileUpload: handleFileSelect called')
     const file = e.target.files?.[0]
+    console.log('FileUpload: selected file:', file?.name, file?.size)
     if (file) {
+      console.log('FileUpload: calling onUpload with file')
       onUpload(file)
+    } else {
+      console.warn('FileUpload: No file selected')
     }
   }
 
