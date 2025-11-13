@@ -6,7 +6,17 @@ frontend:
         - cd frontend && npm ci
     build:
       commands:
-        - cd frontend && npm run build
+        - |
+          if [ -d "frontend" ]; then
+            cd frontend
+            npm run build
+          else
+            echo "Error: frontend directory not found"
+            echo "Current directory: $(pwd)"
+            echo "Directory contents:"
+            ls -la
+            exit 1
+          fi
   artifacts:
     baseDirectory: frontend/dist
     files:
